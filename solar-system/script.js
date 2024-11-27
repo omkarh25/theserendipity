@@ -4,6 +4,7 @@ const orbits = [];
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let tooltip;
+const textureLoader = new THREE.TextureLoader();
 
 // Initialize the scene
 function init() {
@@ -18,9 +19,14 @@ function init() {
 
     tooltip = document.getElementById('tooltip');
 
-    // Add ambient light
-    const ambientLight = new THREE.AmbientLight(0x333333);
+    // Increased ambient light
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
+
+    // Add directional light
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(0, 0, 0);
+    scene.add(directionalLight);
 
     // Create sun
     createSun();
@@ -33,7 +39,7 @@ function init() {
 
     // Position camera
     camera.position.z = 50;
-    camera.position.y = 30; // Add slight tilt to better view orbital planes
+    camera.position.y = 30;
     camera.lookAt(0, 0, 0);
     
     // Add event listeners
@@ -47,53 +53,175 @@ function init() {
 
 function createSun() {
     const sunGeometry = new THREE.SphereGeometry(5, 32, 32);
+    const sunTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/sun.jpg');
     const sunMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffff00,
-        transparent: true,
-        opacity: 0.9
+        map: sunTexture,
+        emissive: 0xffff00,
+        emissiveIntensity: 1
     });
     sun = new THREE.Mesh(sunGeometry, sunMaterial);
     
-    // Add sun glow
-    const sunGlow = new THREE.PointLight(0xffff00, 2, 100);
-    sun.add(sunGlow);
+    // Enhanced sun glow
+    const sunLight = new THREE.PointLight(0xffff00, 3, 100);
+    sun.add(sunLight);
+    
+    // Add corona effect
+    const coronaGeometry = new THREE.SphereGeometry(5.5, 32, 32);
+    const coronaMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffff00,
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.BackSide
+    });
+    const corona = new THREE.Mesh(coronaGeometry, coronaMaterial);
+    sun.add(corona);
     
     scene.add(sun);
 }
 
+function createRings(planet, innerRadius, outerRadius, color) {
+    const ringGeometry = new THREE.RingGeometry(innerRadius, outerRadius, 64);
+    const ringMaterial = new THREE.MeshPhongMaterial({
+        color: color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.8,
+        shininess: 30
+    });
+    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+    ring.rotation.x = Math.PI / 2;
+    planet.add(ring);
+    return ring;
+}
+
 function createPlanets() {
-    // Added real orbital inclinations (in degrees)
     const planetData = [
-        { name: 'Mercury', size: 1.2, distance: 10, color: 0x808080, speed: 0.008, url: '', inclination: 7.0 },
-        { name: 'Venus', size: 1.6, distance: 15, color: 0xffd700, speed: 0.006, url: '', inclination: 3.4 },
-        { name: 'Earth', size: 1.8, distance: 20, color: 0x0077be, speed: 0.004, url: 'https://fms.theserendipity.org', inclination: 0.0 },
-        { name: 'Mars', size: 1.4, distance: 25, color: 0xff4500, speed: 0.003, url: '', inclination: 1.9 },
-        { name: 'Jupiter', size: 3.5, distance: 32, color: 0xffa500, speed: 0.002, url: '', inclination: 1.3 },
-        { name: 'Saturn', size: 3.0, distance: 40, color: 0xffd700, speed: 0.0015, url: '', inclination: 2.5 },
-        { name: 'Uranus', size: 2.5, distance: 45, color: 0x40e0d0, speed: 0.001, url: '', inclination: 0.8 },
-        { name: 'Neptune', size: 2.3, distance: 50, color: 0x0000ff, speed: 0.0008, url: '', inclination: 1.8 }
+        { 
+            name: 'Mercury', 
+            size: 1.5, 
+            distance: 10, 
+            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/mercury.jpg',
+            speed: 0.008, 
+            url: '', 
+            inclination: 7.0,
+            bumpScale: 0.05
+        },
+        { 
+            name: 'Venus', 
+            size: 2.0, 
+            distance: 15, 
+            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/venus.jpg',
+            speed: 0.006, 
+            url: '', 
+            inclination: 3.4,
+            bumpScale: 0.05
+        },
+        { 
+            name: 'Earth', 
+            size: 2.2, 
+            distance: 20, 
+            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth.jpg',
+            speed: 0.004, 
+            url: 'https://fms.theserendipity.org', 
+            inclination: 0.0,
+            bumpScale: 0.1,
+            hasAtmosphere: true
+        },
+        { 
+            name: 'Mars', 
+            size: 1.8, 
+            distance: 25, 
+            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/mars.jpg',
+            speed: 0.003, 
+            url: '', 
+            inclination: 1.9,
+            bumpScale: 0.15
+        },
+        { 
+            name: 'Jupiter', 
+            size: 4.0, 
+            distance: 32, 
+            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/jupiter.jpg',
+            speed: 0.002, 
+            url: '', 
+            inclination: 1.3
+        },
+        { 
+            name: 'Saturn', 
+            size: 3.5, 
+            distance: 40, 
+            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/saturn.jpg',
+            speed: 0.0015, 
+            url: '', 
+            inclination: 2.5,
+            hasRings: true
+        },
+        { 
+            name: 'Uranus', 
+            size: 3.0, 
+            distance: 45, 
+            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/uranus.jpg',
+            speed: 0.001, 
+            url: '', 
+            inclination: 0.8,
+            hasRings: true
+        },
+        { 
+            name: 'Neptune', 
+            size: 2.8, 
+            distance: 50, 
+            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/neptune.jpg',
+            speed: 0.0008, 
+            url: '', 
+            inclination: 1.8,
+            hasRings: true
+        }
     ];
 
     planetData.forEach(data => {
-        // Create planet with hover effect material
         const planetGeometry = new THREE.SphereGeometry(data.size, 32, 32);
+        const texture = textureLoader.load(data.textureUrl);
+        
         const planetMaterial = new THREE.MeshPhongMaterial({
-            color: data.color,
-            shininess: 25,
-            emissive: 0x000000
+            map: texture,
+            shininess: 30,
+            bumpScale: data.bumpScale || 0,
+            specular: new THREE.Color(0x333333)
         });
+
         const planet = new THREE.Mesh(planetGeometry, planetMaterial);
         
-        // Create planet group to handle inclination
+        // Add rings where appropriate
+        if (data.hasRings) {
+            if (data.name === 'Saturn') {
+                createRings(planet, data.size + 1, data.size + 4, 0xc5a880);
+            } else if (data.name === 'Uranus') {
+                createRings(planet, data.size + 0.8, data.size + 1.5, 0x9db4c0);
+            } else if (data.name === 'Neptune') {
+                createRings(planet, data.size + 0.6, data.size + 1.2, 0x4b5e7b);
+            }
+        }
+
+        // Add atmosphere for Earth
+        if (data.hasAtmosphere) {
+            const atmosphereGeometry = new THREE.SphereGeometry(data.size + 0.2, 32, 32);
+            const atmosphereMaterial = new THREE.MeshPhongMaterial({
+                color: 0x6ca6ff,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.BackSide
+            });
+            const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+            planet.add(atmosphere);
+        }
+        
         const planetGroup = new THREE.Group();
         planetGroup.add(planet);
-        // Apply orbital inclination
         planetGroup.rotation.x = (data.inclination * Math.PI) / 180;
         
         planet.userData = { 
             isClickable: true,
             url: data.url,
-            originalColor: data.color,
             name: data.name
         };
         
@@ -108,7 +236,6 @@ function createPlanets() {
         const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
         orbit.rotation.x = Math.PI / 2;
         
-        // Apply same inclination to orbit
         const orbitGroup = new THREE.Group();
         orbitGroup.add(orbit);
         orbitGroup.rotation.x = (data.inclination * Math.PI) / 180;
@@ -160,7 +287,6 @@ function onMouseMove(event) {
         planet.material.emissive.setHex(0x000000);
     });
 
-    // Hide tooltip by default
     tooltip.style.display = 'none';
     document.body.style.cursor = 'default';
 
@@ -204,8 +330,6 @@ function onClick(event) {
 function onScroll(event) {
     const zoomSpeed = 0.1;
     camera.position.z += event.deltaY * zoomSpeed;
-    
-    // Limit zoom range
     camera.position.z = Math.max(15, Math.min(100, camera.position.z));
 }
 
@@ -218,18 +342,14 @@ function onWindowResize() {
 function animate() {
     requestAnimationFrame(animate);
 
-    // Rotate sun
     sun.rotation.y += 0.002;
 
-    // Update planets
     planets.forEach(planet => {
         planet.angle += planet.speed;
         
-        // Calculate orbital position with inclination
         const x = Math.cos(planet.angle) * planet.distance;
         const z = Math.sin(planet.angle) * planet.distance;
         
-        // Update planet position within its tilted group
         planet.mesh.position.x = x;
         planet.mesh.position.z = z;
         planet.mesh.rotation.y += 0.01;
@@ -238,5 +358,4 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// Start the application
 init();
