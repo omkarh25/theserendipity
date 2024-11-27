@@ -1,0 +1,42 @@
+The planetary motion in the solar system is controlled by two main parts of the code:
+
+1. Planet Setup (in createPlanets function):
+```javascript
+const planetData = [
+    { name: 'Mercury', size: 0.8, distance: 10, color: 0x808080, speed: 0.04 },
+    { name: 'Venus', size: 1.2, distance: 15, color: 0xffd700, speed: 0.03 },
+    // ... other planets
+];
+```
+Each planet is given:
+- A specific distance from the sun
+- An orbital speed (smaller number = slower orbit)
+- An initial random angle: angle: Math.random() * Math.PI * 2
+
+2. Motion Animation (in animate function):
+```javascript
+function animate() {
+    requestAnimationFrame(animate);
+
+    // Update planets
+    planets.forEach(planet => {
+        planet.angle += planet.speed;  // Increment the orbital angle
+        // Calculate new x,z positions using trigonometry
+        planet.mesh.position.x = Math.cos(planet.angle) * planet.distance;
+        planet.mesh.position.z = Math.sin(planet.angle) * planet.distance;
+        planet.mesh.rotation.y += 0.02;  // Planet's rotation around its own axis
+    });
+
+    renderer.render(scene, camera);
+}
+```
+
+The key mathematics:
+- planet.angle += planet.speed: Increases the orbital angle each frame
+- Math.cos(planet.angle) * planet.distance: Calculates X position
+- Math.sin(planet.angle) * planet.distance: Calculates Z position
+
+This creates circular orbits where:
+- Faster speed values make planets orbit more quickly
+- Larger distance values place planets further from the sun
+- Using sine and cosine creates the circular motion pattern
