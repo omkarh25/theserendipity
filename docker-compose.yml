@@ -1,0 +1,8 @@
+version: '3'
+services:
+  webserver:
+    build: .
+    ports:
+      - "8060:80"
+    volumes:
+      - ./solar-system:/usr/share/nginx/html 
