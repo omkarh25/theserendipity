@@ -16,7 +16,6 @@ function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
 
-    // Get tooltip element
     tooltip = document.getElementById('tooltip');
 
     // Add ambient light
@@ -34,6 +33,8 @@ function init() {
 
     // Position camera
     camera.position.z = 50;
+    camera.position.y = 30; // Add slight tilt to better view orbital planes
+    camera.lookAt(0, 0, 0);
     
     // Add event listeners
     window.addEventListener('wheel', onScroll);
@@ -61,16 +62,16 @@ function createSun() {
 }
 
 function createPlanets() {
-    // Reduced speeds for better clickability
+    // Added real orbital inclinations (in degrees)
     const planetData = [
-        { name: 'Mercury', size: 1.2, distance: 10, color: 0x808080, speed: 0.008, url: '' },
-        { name: 'Venus', size: 1.6, distance: 15, color: 0xffd700, speed: 0.006, url: '' },
-        { name: 'Earth', size: 1.8, distance: 20, color: 0x0077be, speed: 0.004, url: 'https://fms.theserendipity.org' },
-        { name: 'Mars', size: 1.4, distance: 25, color: 0xff4500, speed: 0.003, url: '' },
-        { name: 'Jupiter', size: 3.5, distance: 32, color: 0xffa500, speed: 0.002, url: '' },
-        { name: 'Saturn', size: 3.0, distance: 40, color: 0xffd700, speed: 0.0015, url: '' },
-        { name: 'Uranus', size: 2.5, distance: 45, color: 0x40e0d0, speed: 0.001, url: '' },
-        { name: 'Neptune', size: 2.3, distance: 50, color: 0x0000ff, speed: 0.0008, url: '' }
+        { name: 'Mercury', size: 1.2, distance: 10, color: 0x808080, speed: 0.008, url: '', inclination: 7.0 },
+        { name: 'Venus', size: 1.6, distance: 15, color: 0xffd700, speed: 0.006, url: '', inclination: 3.4 },
+        { name: 'Earth', size: 1.8, distance: 20, color: 0x0077be, speed: 0.004, url: 'https://fms.theserendipity.org', inclination: 0.0 },
+        { name: 'Mars', size: 1.4, distance: 25, color: 0xff4500, speed: 0.003, url: '', inclination: 1.9 },
+        { name: 'Jupiter', size: 3.5, distance: 32, color: 0xffa500, speed: 0.002, url: '', inclination: 1.3 },
+        { name: 'Saturn', size: 3.0, distance: 40, color: 0xffd700, speed: 0.0015, url: '', inclination: 2.5 },
+        { name: 'Uranus', size: 2.5, distance: 45, color: 0x40e0d0, speed: 0.001, url: '', inclination: 0.8 },
+        { name: 'Neptune', size: 2.3, distance: 50, color: 0x0000ff, speed: 0.0008, url: '', inclination: 1.8 }
     ];
 
     planetData.forEach(data => {
@@ -82,6 +83,13 @@ function createPlanets() {
             emissive: 0x000000
         });
         const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+        
+        // Create planet group to handle inclination
+        const planetGroup = new THREE.Group();
+        planetGroup.add(planet);
+        // Apply orbital inclination
+        planetGroup.rotation.x = (data.inclination * Math.PI) / 180;
+        
         planet.userData = { 
             isClickable: true,
             url: data.url,
@@ -89,7 +97,7 @@ function createPlanets() {
             name: data.name
         };
         
-        // Create orbit
+        // Create orbit with inclination
         const orbitGeometry = new THREE.RingGeometry(data.distance, data.distance + 0.1, 64);
         const orbitMaterial = new THREE.MeshBasicMaterial({
             color: 0x666666,
@@ -100,16 +108,23 @@ function createPlanets() {
         const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
         orbit.rotation.x = Math.PI / 2;
         
+        // Apply same inclination to orbit
+        const orbitGroup = new THREE.Group();
+        orbitGroup.add(orbit);
+        orbitGroup.rotation.x = (data.inclination * Math.PI) / 180;
+        
         planets.push({
             mesh: planet,
+            group: planetGroup,
             distance: data.distance,
             speed: data.speed,
             angle: Math.random() * Math.PI * 2,
-            material: planetMaterial
+            material: planetMaterial,
+            inclination: data.inclination
         });
         
-        scene.add(planet);
-        scene.add(orbit);
+        scene.add(planetGroup);
+        scene.add(orbitGroup);
     });
 }
 
@@ -134,15 +149,11 @@ function createStars() {
 }
 
 function onMouseMove(event) {
-    // Calculate mouse position in normalized device coordinates
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    // Update the picking ray with the camera and mouse position
     raycaster.setFromCamera(mouse, camera);
-
-    // Calculate objects intersecting the picking ray
-    const intersects = raycaster.intersectObjects(scene.children);
+    const intersects = raycaster.intersectObjects(scene.children, true);
 
     // Reset all planet materials
     planets.forEach(planet => {
@@ -153,14 +164,11 @@ function onMouseMove(event) {
     tooltip.style.display = 'none';
     document.body.style.cursor = 'default';
 
-    // Check for intersections
     for (let i = 0; i < intersects.length; i++) {
         const object = intersects[i].object;
         if (object.userData && object.userData.isClickable) {
-            // Highlight planet
             object.material.emissive.setHex(0x555555);
             
-            // Show tooltip with planet name
             tooltip.textContent = object.userData.name;
             if (object.userData.url) {
                 tooltip.textContent += ' (Clickable)';
@@ -169,7 +177,6 @@ function onMouseMove(event) {
             tooltip.style.left = (event.clientX + 10) + 'px';
             tooltip.style.top = (event.clientY + 10) + 'px';
             
-            // Change cursor if planet is clickable
             if (object.userData.url) {
                 document.body.style.cursor = 'pointer';
             }
@@ -179,15 +186,11 @@ function onMouseMove(event) {
 }
 
 function onClick(event) {
-    // Calculate mouse position in normalized device coordinates
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    // Update the picking ray with the camera and mouse position
     raycaster.setFromCamera(mouse, camera);
-
-    // Calculate objects intersecting the picking ray
-    const intersects = raycaster.intersectObjects(scene.children);
+    const intersects = raycaster.intersectObjects(scene.children, true);
 
     for (let i = 0; i < intersects.length; i++) {
         const object = intersects[i].object;
@@ -221,8 +224,14 @@ function animate() {
     // Update planets
     planets.forEach(planet => {
         planet.angle += planet.speed;
-        planet.mesh.position.x = Math.cos(planet.angle) * planet.distance;
-        planet.mesh.position.z = Math.sin(planet.angle) * planet.distance;
+        
+        // Calculate orbital position with inclination
+        const x = Math.cos(planet.angle) * planet.distance;
+        const z = Math.sin(planet.angle) * planet.distance;
+        
+        // Update planet position within its tilted group
+        planet.mesh.position.x = x;
+        planet.mesh.position.z = z;
         planet.mesh.rotation.y += 0.01;
     });
 
