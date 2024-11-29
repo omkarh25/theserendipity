@@ -4,9 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Solar System</title>
+    <style>
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 380px }
+        }
+
+        .header {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffe0;
+            font-size: 60px;
+            font-weight: bold;
+            z-index: 1000;
+            overflow: hidden;
+            white-space: nowrap;
+            width: 0;
+            animation: typing 2s steps(11) forwards;
+        }
+    </style>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <div class="header">Serendipity</div>
     <div id="info">
         <h1>Solar System</h1>
         <p>Scroll to zoom in/out</p>

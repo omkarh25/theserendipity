@@ -34,6 +34,17 @@ body {
     color: white;
 }
 
+#blank-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    z-index: 2000;
+    animation: fadeOut 0.5s ease-out 3s forwards;
+}
+
 canvas {
     position: fixed;
     top: 0;
