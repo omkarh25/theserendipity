@@ -5,8 +5,9 @@ const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let tooltip;
 const textureLoader = new THREE.TextureLoader();
+let bigBangParticles;
+let animationPhase = 'bigbang';
 
-// Initialize the scene
 function init() {
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -19,30 +20,28 @@ function init() {
 
     tooltip = document.getElementById('tooltip');
 
-    // Increased ambient light
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
-    // Add directional light
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(0, 0, 0);
     scene.add(directionalLight);
 
-    // Create sun
+    createBigBang();
     createSun();
+    sun.scale.set(0.001, 0.001, 0.001);
     
-    // Create planets
     createPlanets();
+    planets.forEach(planet => {
+        planet.group.scale.set(0.001, 0.001, 0.001);
+    });
     
-    // Create starfield
     createStars();
 
-    // Position camera
     camera.position.z = 50;
     camera.position.y = 30;
     camera.lookAt(0, 0, 0);
     
-    // Add event listeners
     window.addEventListener('wheel', onScroll);
     window.addEventListener('resize', onWindowResize);
     window.addEventListener('click', onClick);
@@ -51,21 +50,73 @@ function init() {
     animate();
 }
 
+function createBigBang() {
+    const particleCount = 5000;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const velocities = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount; i++) {
+        positions[i * 3] = 0;
+        positions[i * 3 + 1] = 0;
+        positions[i * 3 + 2] = 0;
+
+        velocities[i * 3] = (Math.random() - 0.5) * 2;
+        velocities[i * 3 + 1] = (Math.random() - 0.5) * 2;
+        velocities[i * 3 + 2] = (Math.random() - 0.5) * 2;
+
+        const colorPhase = Math.random();
+        if (colorPhase < 0.25) {
+            colors[i * 3] = 1;
+            colors[i * 3 + 1] = 1;
+            colors[i * 3 + 2] = 1;
+        } else if (colorPhase < 0.5) {
+            colors[i * 3] = 1;
+            colors[i * 3 + 1] = 1;
+            colors[i * 3 + 2] = 0;
+        } else if (colorPhase < 0.75) {
+            colors[i * 3] = 1;
+            colors[i * 3 + 1] = 0.5;
+            colors[i * 3 + 2] = 0;
+        } else {
+            colors[i * 3] = 1;
+            colors[i * 3 + 1] = 0;
+            colors[i * 3 + 2] = 0;
+        }
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({
+        size: 0.2,
+        vertexColors: true,
+        transparent: true
+    });
+
+    bigBangParticles = {
+        mesh: new THREE.Points(geometry, material),
+        velocities: velocities,
+        time: 0
+    };
+
+    scene.add(bigBangParticles.mesh);
+}
+
 function createSun() {
     const sunGeometry = new THREE.SphereGeometry(5, 32, 32);
-    const sunTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/sun.jpg');
-    const sunMaterial = new THREE.MeshBasicMaterial({
-        map: sunTexture,
-        emissive: 0xffff00,
-        emissiveIntensity: 1
+    const sunMaterial = new THREE.MeshPhongMaterial({
+        color: 0xffff00,
+        emissive: 0xff4500,
+        emissiveIntensity: 0.7,
+        shininess: 20
     });
     sun = new THREE.Mesh(sunGeometry, sunMaterial);
     
-    // Enhanced sun glow
     const sunLight = new THREE.PointLight(0xffff00, 3, 100);
     sun.add(sunLight);
     
-    // Add corona effect
     const coronaGeometry = new THREE.SphereGeometry(5.5, 32, 32);
     const coronaMaterial = new THREE.MeshBasicMaterial({
         color: 0xffff00,
@@ -99,49 +150,45 @@ function createPlanets() {
         { 
             name: 'Mercury', 
             size: 1.5, 
-            distance: 10, 
-            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/mercury.jpg',
+            distance: 10,
+            color: 0x8B8B8B,
             speed: 0.008, 
             url: '', 
-            inclination: 7.0,
-            bumpScale: 0.05
+            inclination: 7.0
         },
         { 
             name: 'Venus', 
             size: 2.0, 
-            distance: 15, 
-            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/venus.jpg',
+            distance: 15,
+            color: 0xE6B800,
             speed: 0.006, 
             url: '', 
-            inclination: 3.4,
-            bumpScale: 0.05
+            inclination: 3.4
         },
         { 
             name: 'Earth', 
             size: 2.2, 
-            distance: 20, 
-            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth.jpg',
+            distance: 20,
+            color: 0x2E8B57,
             speed: 0.004, 
             url: 'https://fms.theserendipity.org', 
             inclination: 0.0,
-            bumpScale: 0.1,
             hasAtmosphere: true
         },
         { 
             name: 'Mars', 
             size: 1.8, 
-            distance: 25, 
-            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/mars.jpg',
+            distance: 25,
+            color: 0xCD5C5C,
             speed: 0.003, 
             url: '', 
-            inclination: 1.9,
-            bumpScale: 0.15
+            inclination: 1.9
         },
         { 
             name: 'Jupiter', 
             size: 4.0, 
-            distance: 32, 
-            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/jupiter.jpg',
+            distance: 32,
+            color: 0xDEB887,
             speed: 0.002, 
             url: '', 
             inclination: 1.3
@@ -149,8 +196,8 @@ function createPlanets() {
         { 
             name: 'Saturn', 
             size: 3.5, 
-            distance: 40, 
-            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/saturn.jpg',
+            distance: 40,
+            color: 0xF4A460,
             speed: 0.0015, 
             url: '', 
             inclination: 2.5,
@@ -159,8 +206,8 @@ function createPlanets() {
         { 
             name: 'Uranus', 
             size: 3.0, 
-            distance: 45, 
-            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/uranus.jpg',
+            distance: 45,
+            color: 0x87CEEB,
             speed: 0.001, 
             url: '', 
             inclination: 0.8,
@@ -169,8 +216,8 @@ function createPlanets() {
         { 
             name: 'Neptune', 
             size: 2.8, 
-            distance: 50, 
-            textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/neptune.jpg',
+            distance: 50,
+            color: 0x4169E1,
             speed: 0.0008, 
             url: '', 
             inclination: 1.8,
@@ -180,18 +227,14 @@ function createPlanets() {
 
     planetData.forEach(data => {
         const planetGeometry = new THREE.SphereGeometry(data.size, 32, 32);
-        const texture = textureLoader.load(data.textureUrl);
-        
         const planetMaterial = new THREE.MeshPhongMaterial({
-            map: texture,
+            color: data.color,
             shininess: 30,
-            bumpScale: data.bumpScale || 0,
             specular: new THREE.Color(0x333333)
         });
 
         const planet = new THREE.Mesh(planetGeometry, planetMaterial);
         
-        // Add rings where appropriate
         if (data.hasRings) {
             if (data.name === 'Saturn') {
                 createRings(planet, data.size + 1, data.size + 4, 0xc5a880);
@@ -202,7 +245,6 @@ function createPlanets() {
             }
         }
 
-        // Add atmosphere for Earth
         if (data.hasAtmosphere) {
             const atmosphereGeometry = new THREE.SphereGeometry(data.size + 0.2, 32, 32);
             const atmosphereMaterial = new THREE.MeshPhongMaterial({
@@ -225,7 +267,6 @@ function createPlanets() {
             name: data.name
         };
         
-        // Create orbit with inclination
         const orbitGeometry = new THREE.RingGeometry(data.distance, data.distance + 0.1, 64);
         const orbitMaterial = new THREE.MeshBasicMaterial({
             color: 0x666666,
@@ -276,13 +317,14 @@ function createStars() {
 }
 
 function onMouseMove(event) {
+    if (animationPhase !== 'complete') return;
+
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(scene.children, true);
 
-    // Reset all planet materials
     planets.forEach(planet => {
         planet.material.emissive.setHex(0x000000);
     });
@@ -312,6 +354,8 @@ function onMouseMove(event) {
 }
 
 function onClick(event) {
+    if (animationPhase !== 'complete') return;
+
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -328,6 +372,8 @@ function onClick(event) {
 }
 
 function onScroll(event) {
+    if (animationPhase !== 'complete') return;
+
     const zoomSpeed = 0.1;
     camera.position.z += event.deltaY * zoomSpeed;
     camera.position.z = Math.max(15, Math.min(100, camera.position.z));
@@ -339,21 +385,73 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+function updateBigBang() {
+    const positions = bigBangParticles.mesh.geometry.attributes.position.array;
+    const velocities = bigBangParticles.velocities;
+    
+    for (let i = 0; i < positions.length; i += 3) {
+        positions[i] += velocities[i] * (1 + bigBangParticles.time * 0.1);
+        positions[i + 1] += velocities[i + 1] * (1 + bigBangParticles.time * 0.1);
+        positions[i + 2] += velocities[i + 2] * (1 + bigBangParticles.time * 0.1);
+    }
+    
+    bigBangParticles.mesh.geometry.attributes.position.needsUpdate = true;
+    bigBangParticles.time += 0.016;
+
+    bigBangParticles.mesh.material.opacity = Math.max(0, 1 - bigBangParticles.time * 0.2);
+
+    if (bigBangParticles.time > 3) {
+        if (animationPhase === 'bigbang') {
+            animationPhase = 'transition';
+        }
+    }
+}
+
 function animate() {
     requestAnimationFrame(animate);
 
-    sun.rotation.y += 0.002;
+    if (animationPhase === 'bigbang') {
+        updateBigBang();
+    } else if (animationPhase === 'transition') {
+        if (bigBangParticles.mesh.material.opacity > 0) {
+            bigBangParticles.mesh.material.opacity -= 0.02;
+        } else {
+            scene.remove(bigBangParticles.mesh);
+        }
 
-    planets.forEach(planet => {
-        planet.angle += planet.speed;
-        
-        const x = Math.cos(planet.angle) * planet.distance;
-        const z = Math.sin(planet.angle) * planet.distance;
-        
-        planet.mesh.position.x = x;
-        planet.mesh.position.z = z;
-        planet.mesh.rotation.y += 0.01;
-    });
+        if (sun.scale.x < 1) {
+            const scale = sun.scale.x + 0.02;
+            sun.scale.set(scale, scale, scale);
+        }
+
+        let allPlanetsScaled = true;
+        planets.forEach((planet, index) => {
+            if (planet.group.scale.x < 1) {
+                const scale = planet.group.scale.x + 0.02;
+                planet.group.scale.set(scale, scale, scale);
+                allPlanetsScaled = false;
+            }
+        });
+
+        if (allPlanetsScaled && sun.scale.x >= 1) {
+            animationPhase = 'complete';
+        }
+    }
+
+    if (animationPhase === 'transition' || animationPhase === 'complete') {
+        sun.rotation.y += 0.002;
+
+        planets.forEach(planet => {
+            planet.angle += planet.speed;
+            
+            const x = Math.cos(planet.angle) * planet.distance;
+            const z = Math.sin(planet.angle) * planet.distance;
+            
+            planet.mesh.position.x = x;
+            planet.mesh.position.z = z;
+            planet.mesh.rotation.y += 0.01;
+        });
+    }
 
     renderer.render(scene, camera);
 }
